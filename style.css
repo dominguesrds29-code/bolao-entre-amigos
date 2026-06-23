@@ -1,36 +1,57 @@
 body {
-    background-color: #111413;
-    color: #e1e3e1;
+    background-color: #080c14;
+    color: #e1e8f0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     -webkit-tap-highlight-color: transparent;
-    user-select: none; /* Make it feel like an app */
+    user-select: none;
 }
 
-/* Glassmorphism effects */
-.glass-card {
-    background: rgba(29, 32, 31, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
+/* Stadium-inspired radial glow background */
 .stadium-gradient {
-    background: radial-gradient(circle at top right, #0f2e23 0%, #111413 100%);
+    background: radial-gradient(circle at 50% 0%, #0c1e19 0%, #080c14 70%);
     background-attachment: fixed;
 }
 
-/* Match card interaction */
-.match-card-glow {
-    background: linear-gradient(145deg, rgba(29, 32, 31, 1) 0%, rgba(17, 20, 19, 1) 100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Bet-style Glass Card */
+.glass-card {
+    background: rgba(17, 24, 39, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
-.match-card-glow:focus-within {
-    border-color: #2ff801;
-    box-shadow: 0 0 15px rgba(47, 248, 1, 0.2);
-    transform: translateY(-2px);
+/* Glow effects */
+.glow-neon {
+    box-shadow: 0 0 15px rgba(0, 255, 135, 0.15);
 }
 
-/* Number inputs without arrows */
+.glow-orange {
+    box-shadow: 0 0 15px rgba(255, 122, 0, 0.15);
+}
+
+/* Custom 1X2 Betting Buttons */
+.odds-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.odds-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f8fafc;
+}
+
+.odds-btn.active {
+    background: rgba(0, 255, 135, 0.12);
+    border-color: #00ff87;
+    color: #00ff87;
+    text-shadow: 0 0 8px rgba(0, 255, 135, 0.5);
+    box-shadow: inset 0 0 10px rgba(0, 255, 135, 0.1);
+}
+
+/* Input Fields */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -40,30 +61,104 @@ input[type=number] {
     -moz-appearance: textfield;
 }
 
+/* Form (streak) circles */
+.form-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+}
+.form-dot.win {
+    background: #00ff87;
+    color: #042f1a;
+}
+.form-dot.draw {
+    background: #eab308;
+    color: #451a03;
+}
+.form-dot.loss {
+    background: #ef4444;
+    color: #4c0519;
+}
+
+/* Slide-up Bet Slip (Boletim) */
+.bet-slip-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #0f1322;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.94, 0.6, 1);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.bet-slip-drawer.open {
+    transform: translateY(0);
+}
+
+/* Live blinking indicator */
+.live-pulse {
+    position: relative;
+}
+.live-pulse::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.8);
+        opacity: 0.3;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 1;
+    }
+}
+
 /* Animations */
 .fade-in {
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fadeIn 0.25s ease-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Nav Active State */
+/* Bottom Navigation Active style */
 .nav-btn {
-    color: #c1c8c3;
+    color: #94a3b8;
 }
 .nav-btn.active {
-    background-color: #2ff801;
-    color: #0f6d00;
-    border-radius: 9999px;
+    color: #00ff87;
 }
 .nav-btn.active .material-symbols-outlined {
     font-variation-settings: 'FILL' 1;
 }
 
-/* Safe Area for iOS/Modern Phones */
 .safe-area-padding {
     padding-bottom: env(safe-area-inset-bottom, 16px);
 }
+
