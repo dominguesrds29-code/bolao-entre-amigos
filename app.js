@@ -710,6 +710,210 @@ function updateProfileUI() {
   }
 }
 
+// --- SCORE AND CHART FUNCTIONS ---
+let rankingChartInstance = null;
+
+function getPointsAwarded(predHome, predAway, realHome, realAway) {
+  if (predHome === null || predAway === null || realHome === null || realAway === null) return 0;
+  if (predHome === realHome && predAway === realAway) {
+    return 25;
+  }
+  const predResult = Math.sign(predHome - predAway);
+  const realResult = Math.sign(realHome - realAway);
+  if (predResult === realResult) {
+    return 10;
+  }
+  return 0;
+}
+
+function renderRankingChart() {
+  const ctx = document.getElementById("ranking-history-chart");
+  if (!ctx) return;
+
+  let users = [];
+  if (!isApiActive) {
+    users = loadMockUsersDB().filter(u => u.status === "approved");
+  } else {
+    users = (state.rankings.global || []).map(r => ({
+      id: r.name,
+      name: r.name,
+      points: r.points,
+      isCurrentUser: r.isCurrentUser
+    }));
+  }
+
+  const baseHistories = {
+    "admin_id": [0, 0, 0, 0, 0, 0],
+    "user_rodrigo_id": [0, 500, 800, 1100, 1580, 1580],
+    "user_ana_id": [0, 600, 900, 1200, 1520, 1520],
+    "user_mariana_id": [0, 300, 600, 1000, 1390, 1390],
+    "pedro_mock_id": [0, 400, 700, 950, 1240, 1240],
+    "user_carlos_id": [0, 450, 650, 850, 1100, 1100],
+    "user_beatriz_id": [0, 350, 550, 750, 950, 950],
+    "user_andre_id": [0, 300, 500, 700, 840, 840],
+    "user_bruno_id": [0, 250, 400, 550, 720, 720],
+    "user_gabriel_id": [0, 200, 350, 480, 610, 610],
+    "user_camila_id": [0, 150, 280, 400, 530, 530]
+  };
+
+  const m1 = state.matches.find(m => m.id === "m1");
+  const isM1Played = m1 && (m1.status === "completed" || m1.status === "live");
+  const m1RealHome = m1 ? m1.homeScore : null;
+  const m1RealAway = m1 ? m1.awayScore : null;
+
+  const m1MockPredictions = {
+    "user_rodrigo_id": { home: 3, away: 0 },
+    "user_ana_id": { home: 2, away: 1 },
+    "user_mariana_id": { home: 1, away: 1 },
+    "user_carlos_id": { home: 2, away: 0 },
+    "user_beatriz_id": { home: 0, away: 1 },
+    "user_andre_id": { home: 2, away: 2 },
+    "user_bruno_id": { home: 4, away: 1 },
+    "user_gabriel_id": { home: 1, away: 2 },
+    "user_camila_id": { home: 3, away: 1 }
+  };
+
+  users.forEach(u => {
+    let hist = baseHistories[u.id];
+    if (!hist) {
+      hist = [0, 0, 0, 0, u.points, u.points];
+      baseHistories[u.id] = hist;
+    }
+
+    if (u.id === "pedro_mock_id" || u.isCurrentUser || u.id === state.user?.id) {
+      hist[4] = state.user?.points || 0;
+    } else {
+      hist[4] = u.points;
+    }
+
+    if (isM1Played && m1RealHome !== null && m1RealAway !== null) {
+      let predHome = null;
+      let predAway = null;
+
+      if (u.id === "pedro_mock_id" || u.isCurrentUser || u.id === state.user?.id) {
+        const pred = state.predictions["m1"];
+        if (pred) {
+          predHome = pred.homeScore;
+          predAway = pred.awayScore;
+        }
+      } else {
+        const pred = m1MockPredictions[u.id];
+        if (pred) {
+          predHome = pred.home;
+          predAway = pred.away;
+        }
+      }
+
+      const m1Gained = getPointsAwarded(predHome, predAway, m1RealHome, m1RealAway);
+      hist[5] = hist[4] + m1Gained;
+    } else {
+      hist[5] = hist[4];
+    }
+  });
+
+  const rankHistories = {};
+  users.forEach(u => {
+    rankHistories[u.id] = [];
+  });
+
+  const stepsCount = 6;
+  for (let step = 0; step < stepsCount; step++) {
+    const sortedAtStep = [...users].map(u => ({
+      id: u.id,
+      points: baseHistories[u.id] ? baseHistories[u.id][step] : 0
+    }));
+    sortedAtStep.sort((a, b) => b.points - a.points);
+
+    sortedAtStep.forEach((item, index) => {
+      if (rankHistories[item.id]) {
+        rankHistories[item.id].push(index + 1);
+      }
+    });
+  }
+
+  const sortedCurrent = [...users].sort((a, b) => (baseHistories[b.id][5]) - (baseHistories[a.id][5]));
+  const top4Ids = sortedCurrent.slice(0, 4).map(u => u.id);
+  const currentUserId = state.user?.id || "pedro_mock_id";
+
+  const idsToShow = new Set(top4Ids);
+  idsToShow.add(currentUserId);
+
+  const colors = ["#3b82f6", "#10b981", "#ec4899", "#a855f7", "#06b6d4"];
+  const datasets = [];
+  let colorIdx = 0;
+
+  users.forEach(u => {
+    if (idsToShow.has(u.id)) {
+      const isMe = u.id === currentUserId;
+      const label = isMe ? `${u.name} (Você)` : u.name;
+      datasets.push({
+        label: label,
+        data: rankHistories[u.id],
+        borderColor: isMe ? "#ffd000" : colors[colorIdx % colors.length],
+        backgroundColor: "transparent",
+        borderWidth: isMe ? 4 : 2,
+        tension: 0.3,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      });
+      if (!isMe) colorIdx++;
+    }
+  });
+
+  if (rankingChartInstance) {
+    rankingChartInstance.destroy();
+  }
+
+  const labels = ["Início", "Jogo 1", "Jogo 2", "Jogo 3", "Jogo 4", "Jogo 5"];
+
+  rankingChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          ticks: { color: "#94a3b8", font: { family: "Outfit", size: 10 } }
+        },
+        y: {
+          reverse: true,
+          min: 1,
+          max: Math.max(10, users.length),
+          ticks: {
+            stepSize: 1,
+            color: "#94a3b8",
+            font: { family: "Outfit", size: 10 },
+            callback: function(value) { return value + "º"; }
+          },
+          grid: { color: "rgba(255, 255, 255, 0.05)" }
+        }
+      },
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            boxWidth: 10,
+            color: "#94a3b8",
+            font: { family: "Outfit", size: 10 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ": " + context.raw + "º Lugar";
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
 function renderLeaderboard(groupId = "global") {
   // Mock fallback logic loads global database to calculate rankings dynamically in mock mode!
   let rankingList = [];
@@ -718,6 +922,7 @@ function renderLeaderboard(groupId = "global") {
     rankingList = db
       .filter(user => user.status === "approved") // Only display approved users in the leaderboard
       .map(user => ({
+        id: user.id,
         name: user.name,
         avatar: user.avatar || "avatar.jpg",
         points: user.points,
@@ -734,6 +939,25 @@ function renderLeaderboard(groupId = "global") {
   }
   
   rankingList.sort((a, b) => b.points - a.points);
+
+  // Update currentUser globalRank in state and local storage DB if mock mode
+  const currentLeaderboardIndex = rankingList.findIndex(item => item.isCurrentUser);
+  if (currentLeaderboardIndex !== -1 && state.user) {
+    const newRank = currentLeaderboardIndex + 1;
+    state.user.globalRank = newRank;
+    saveState();
+    
+    if (!isApiActive) {
+      const db = loadMockUsersDB();
+      const uIdx = db.findIndex(u => u.id === state.user.id);
+      if (uIdx !== -1) {
+        db[uIdx].globalRank = newRank;
+        db[uIdx].points = state.user.points;
+        saveMockUsersDB(db);
+      }
+    }
+  }
+
   fullLeaderboardList.innerHTML = "";
   
   rankingList.forEach((player, index) => {
@@ -767,6 +991,8 @@ function renderLeaderboard(groupId = "global") {
     `;
     fullLeaderboardList.appendChild(row);
   });
+  
+  renderRankingChart();
 }
 
 function renderHomeRankingPreview() {
@@ -1101,6 +1327,7 @@ function switchTab(tabId) {
     renderMatchesList(activeFilter);
   } else if (tabId === "view-ranking") {
     renderLeaderboard("global");
+    renderRankingChart();
   } else if (tabId === "view-perfil") {
     updateProfileUI();
   }
