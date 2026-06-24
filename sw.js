@@ -1,4 +1,4 @@
-const CACHE_NAME = "bolao-2026-v1";
+const CACHE_NAME = "bolao-2026-v2";
 const ASSETS = [
   "index.html",
   "style.css",
@@ -10,10 +10,25 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
+  self.skipWaiting(); // Force the waiting service worker to become the active service worker
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS);
     })
+  );
+});
+
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim()) // Force immediate control of open clients
   );
 });
 
