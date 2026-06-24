@@ -541,19 +541,184 @@
     </div>
   </div>
 
-  <!-- 3. ADMIN USERS MANAGEMENT MODAL -->
+  <!-- 3. ADMIN USERS & MATCHES MANAGEMENT MODAL -->
   <div class="modal-overlay" id="admin-modal">
     <div class="modal-card" style="max-height: 85vh; display: flex; flex-direction: column;">
-      <div class="modal-header" style="flex-shrink: 0;">
-        <h4>Gerenciar Usuários (Admin)</h4>
+      <div class="modal-header" style="flex-shrink: 0; margin-bottom: 8px;">
+        <h4>Painel do Administrador</h4>
         <button class="close-btn" id="close-admin-modal">&times;</button>
       </div>
+      
+      <!-- Admin Modal Tabs -->
+      <div class="match-filters" style="margin-bottom: 12px; grid-template-columns: 1fr 1fr; flex-shrink: 0;">
+        <button class="filter-tab active" id="admin-tab-users" style="padding: 6px;">Usuários</button>
+        <button class="filter-tab" id="admin-tab-matches" style="padding: 6px;">Partidas</button>
+      </div>
+
       <div class="modal-body" style="overflow-y: auto; flex-grow: 1; padding-bottom: 20px;">
-        <p class="modal-subtitle">Libere acesso aos usuários após confirmação de pagamento.</p>
-        
-        <div class="admin-users-list" id="admin-users-list-container">
-          <!-- Dynamically populated inside app.js -->
+        <!-- Users Tab Container -->
+        <div id="admin-users-tab-content">
+          <p class="modal-subtitle">Libere acesso aos usuários após confirmação de pagamento.</p>
+          <div class="admin-users-list" id="admin-users-list-container">
+            <!-- Dynamically populated -->
+          </div>
         </div>
+
+        <!-- Matches Tab Container -->
+        <div id="admin-matches-tab-content" style="display: none;">
+          <p class="modal-subtitle">Lançe resultados ou altere times das rodadas.</p>
+          <div class="admin-users-list" id="admin-matches-list-container">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ADMIN EDIT MATCH DETAILS MODAL -->
+  <div class="modal-overlay" id="admin-match-modal">
+    <div class="modal-card" style="max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h4>Editar Partida (Admin)</h4>
+        <button class="close-btn" id="close-admin-match-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto;">
+        <!-- Home Team Select -->
+        <div class="input-group">
+          <label for="admin-home-select">Time da Casa</label>
+          <select id="admin-home-select" class="premium-select">
+            <option value="adefinir|ADF|🏳️">A definir</option>
+            <option value="alemanha|GER|🇩🇪">Alemanha</option>
+            <option value="arabia-saudita|sa|sa">Arábia Saudita</option>
+            <option value="argelia|dz|dz">Argélia</option>
+            <option value="argentina|ARG|🇦🇷">Argentina</option>
+            <option value="australia|au|au">Austrália</option>
+            <option value="austria|at|at">Áustria</option>
+            <option value="belgica|be|be">Bélgica</option>
+            <option value="brasil|BRA|🇧🇷">Brasil</option>
+            <option value="camaroes|cm|cm">Camarões</option>
+            <option value="canada|ca|ca">Canadá</option>
+            <option value="chile|cl|cl">Chile</option>
+            <option value="colombia|co|co">Colômbia</option>
+            <option value="coreia-do-sul|kr|kr">Coreia do Sul</option>
+            <option value="costa-do-marfim|ci|ci">Costa do Marfim</option>
+            <option value="costa-rica|cr|cr">Costa Rica</option>
+            <option value="croacia|hr|hr">Croácia</option>
+            <option value="dinamarca|dk|dk">Dinamarca</option>
+            <option value="egito|eg|eg">Egito</option>
+            <option value="equador|ec|ec">Equador</option>
+            <option value="escocia|gb-sct|gb-sct">Escócia</option>
+            <option value="espanha|ESP|🇪🇸">Espanha</option>
+            <option value="franca|FRA|🇫🇷">França</option>
+            <option value="gana|gh|gh">Gana</option>
+            <option value="holanda|nl|nl">Holanda</option>
+            <option value="hungria|hu|hu">Hungria</option>
+            <option value="inglaterra|ENG|🏴󠁧󠁢󠁥󠁮󠁧󠁿">Inglaterra</option>
+            <option value="ira|ir|ir">Irã</option>
+            <option value="italia|ITA|🇮🇹">Itália</option>
+            <option value="jamaica|jm|jm">Jamaica</option>
+            <option value="japao|jp|jp">Japão</option>
+            <option value="marrocos|ma|ma">Marrocos</option>
+            <option value="mexico|MEX|🇲🇽">México</option>
+            <option value="nigeria|ng|ng">Nigéria</option>
+            <option value="nova-zelandia|nz|nz">Nova Zelândia</option>
+            <option value="pais-de-gales|gb-wls|gb-wls">País de Gales</option>
+            <option value="panama|pa|pa">Panamá</option>
+            <option value="peru|pe|pe">Peru</option>
+            <option value="polonia|pl|pl">Polônia</option>
+            <option value="portugal|pt|pt">Portugal</option>
+            <option value="republica-checa|cz|cz">República Checa</option>
+            <option value="senegal|sn|sn">Senegal</option>
+            <option value="suecia|se|se">Suécia</option>
+            <option value="suica|ch|ch">Suíça</option>
+            <option value="tunisia|tn|tn">Tunísia</option>
+            <option value="turquia|tr|tr">Turquia</option>
+            <option value="ucrania|ua|ua">Ucrânia</option>
+            <option value="uruguai|uy|uy">Uruguai</option>
+            <option value="usa|USA|🇺🇸">EUA</option>
+          </select>
+        </div>
+
+        <!-- Away Team Select -->
+        <div class="input-group">
+          <label for="admin-away-select">Time de Fora</label>
+          <select id="admin-away-select" class="premium-select">
+            <option value="adefinir|ADF|🏳️">A definir</option>
+            <option value="alemanha|GER|🇩🇪">Alemanha</option>
+            <option value="arabia-saudita|sa|sa">Arábia Saudita</option>
+            <option value="argelia|dz|dz">Argélia</option>
+            <option value="argentina|ARG|🇦🇷">Argentina</option>
+            <option value="australia|au|au">Austrália</option>
+            <option value="austria|at|at">Áustria</option>
+            <option value="belgica|be|be">Bélgica</option>
+            <option value="brasil|BRA|🇧🇷">Brasil</option>
+            <option value="camaroes|cm|cm">Camarões</option>
+            <option value="canada|ca|ca">Canadá</option>
+            <option value="chile|cl|cl">Chile</option>
+            <option value="colombia|co|co">Colômbia</option>
+            <option value="coreia-do-sul|kr|kr">Coreia do Sul</option>
+            <option value="costa-do-marfim|ci|ci">Costa do Marfim</option>
+            <option value="costa-rica|cr|cr">Costa Rica</option>
+            <option value="croacia|hr|hr">Croácia</option>
+            <option value="dinamarca|dk|dk">Dinamarca</option>
+            <option value="egito|eg|eg">Egito</option>
+            <option value="equador|ec|ec">Equador</option>
+            <option value="escocia|gb-sct|gb-sct">Escócia</option>
+            <option value="espanha|ESP|🇪🇸">Espanha</option>
+            <option value="franca|FRA|🇫🇷">França</option>
+            <option value="gana|gh|gh">Gana</option>
+            <option value="holanda|nl|nl">Holanda</option>
+            <option value="hungria|hu|hu">Hungria</option>
+            <option value="inglaterra|ENG|🏴󠁧󠁢󠁥󠁮󠁧󠁿">Inglaterra</option>
+            <option value="ira|ir|ir">Irã</option>
+            <option value="italia|ITA|🇮🇹">Itália</option>
+            <option value="jamaica|jm|jm">Jamaica</option>
+            <option value="japao|jp|jp">Japão</option>
+            <option value="marrocos|ma|ma">Marrocos</option>
+            <option value="mexico|MEX|🇲🇽">México</option>
+            <option value="nigeria|ng|ng">Nigéria</option>
+            <option value="nova-zelandia|nz|nz">Nova Zelândia</option>
+            <option value="pais-de-gales|gb-wls|gb-wls">País de Gales</option>
+            <option value="panama|pa|pa">Panamá</option>
+            <option value="peru|pe|pe">Peru</option>
+            <option value="polonia|pl|pl">Polônia</option>
+            <option value="portugal|pt|pt">Portugal</option>
+            <option value="republica-checa|cz|cz">República Checa</option>
+            <option value="senegal|sn|sn">Senegal</option>
+            <option value="suecia|se|se">Suécia</option>
+            <option value="suica|ch|ch">Suíça</option>
+            <option value="tunisia|tn|tn">Tunísia</option>
+            <option value="turquia|tr|tr">Turquia</option>
+            <option value="ucrania|ua|ua">Ucrânia</option>
+            <option value="uruguai|uy|uy">Uruguai</option>
+            <option value="usa|USA|🇺🇸">EUA</option>
+          </select>
+        </div>
+
+        <!-- Scores Form -->
+        <div class="match-predict-form" style="padding: 12px; margin-bottom: 16px;">
+          <div class="predict-team">
+            <input type="number" min="0" max="99" id="admin-home-score" class="score-input" placeholder="-">
+          </div>
+          <div class="predict-vs">vs</div>
+          <div class="predict-team">
+            <input type="number" min="0" max="99" id="admin-away-score" class="score-input" placeholder="-">
+          </div>
+        </div>
+
+        <!-- Match Status Select -->
+        <div class="input-group">
+          <label for="admin-status-select">Status do Jogo</label>
+          <select id="admin-status-select" class="premium-select">
+            <option value="upcoming">Agendado (Upcoming)</option>
+            <option value="live">Ao Vivo (Live)</option>
+            <option value="completed">Finalizado (Completed)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="flex-shrink: 0; margin-top: 0; padding-top: 10px;">
+        <button class="btn btn-secondary" id="cancel-admin-match-btn">Cancelar</button>
+        <button class="btn btn-primary btn-gold" id="save-admin-match-btn">Salvar Alterações</button>
       </div>
     </div>
   </div>

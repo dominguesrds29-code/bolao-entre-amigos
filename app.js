@@ -344,6 +344,8 @@ const modalAwayScore = document.getElementById("modal-away-score");
 
 // Admin Panel user list container
 const adminUsersListContainer = document.getElementById("admin-users-list-container");
+const adminMatchesListContainer = document.getElementById("admin-matches-list-container");
+const adminMatchModal = document.getElementById("admin-match-modal");
 
 let currentEditingMatchId = null;
 let isSignupMode = false;
@@ -606,6 +608,172 @@ async function toggleUserStatus(targetUserId, nextStatus) {
     renderLeaderboard("global");
   } catch (err) {
     showToast("Erro ao alterar status: " + err.message, "danger");
+  }
+}
+
+// --- ADMIN MATCHES RETRIEVAL & RENDER ---
+async function loadAdminMatches() {
+  adminMatchesListContainer.innerHTML = "";
+  
+  state.matches.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "admin-user-card";
+    
+    let statusText = "Agendado";
+    let statusClass = "pending";
+    if (m.status === "live") {
+      statusText = "Ao Vivo";
+      statusClass = "approved";
+    } else if (m.status === "completed") {
+      statusText = "Finalizado";
+      statusClass = "approved";
+    }
+
+    const homeScoreDisplay = m.homeScore !== null ? m.homeScore : "-";
+    const awayScoreDisplay = m.awayScore !== null ? m.awayScore : "-";
+
+    card.innerHTML = `
+      <div class="admin-user-info" style="gap: 4px;">
+        <span class="name" style="font-size:12px;">${m.homeFlag} ${m.homeTeam} vs ${m.awayTeam} ${m.awayFlag}</span>
+        <span class="email">${m.time}</span>
+        <span class="points" style="color:var(--color-primary); font-size: 13px;">Placar: <strong>${homeScoreDisplay} x ${awayScoreDisplay}</strong></span>
+      </div>
+      <div class="admin-user-actions" style="gap: 8px;">
+        <span class="status-badge ${statusClass}" style="font-size: 8px;">${statusText}</span>
+        <button class="btn-status-toggle edit-match-action" data-match-id="${m.id}" style="padding: 4px 10px; font-size: 10px;">Editar</button>
+      </div>
+    `;
+
+    card.querySelector(".edit-match-action").addEventListener("click", () => {
+      openAdminMatchModal(m.id);
+    });
+
+    adminMatchesListContainer.appendChild(card);
+  });
+}
+
+let currentEditingAdminMatchId = null;
+
+function openAdminMatchModal(matchId) {
+  const m = state.matches.find(item => item.id === matchId);
+  if (!m) return;
+
+  currentEditingAdminMatchId = matchId;
+  
+  const homeSelect = document.getElementById("admin-home-select");
+  const awaySelect = document.getElementById("admin-away-select");
+  
+  setSelectedValue(homeSelect, m.homeTeam, m.homeAbbrev, m.homeFlag);
+  setSelectedValue(awaySelect, m.awayTeam, m.awayAbbrev, m.awayFlag);
+
+  document.getElementById("admin-home-score").value = m.homeScore !== null ? m.homeScore : "";
+  document.getElementById("admin-away-score").value = m.awayScore !== null ? m.awayScore : "";
+
+  document.getElementById("admin-status-select").value = m.status;
+
+  adminMatchModal.classList.add("open");
+}
+
+function setSelectedValue(selectEl, name, abbrev, flag) {
+  for (let option of selectEl.options) {
+    const parts = option.value.split('|');
+    if (parts[0].toLowerCase() === name.toLowerCase() || option.text.toLowerCase() === name.toLowerCase()) {
+      selectEl.value = option.value;
+      return;
+    }
+  }
+  selectEl.selectedIndex = 0;
+}
+
+async function saveAdminMatchDetails() {
+  const homeVal = document.getElementById("admin-home-select").value;
+  const awayVal = document.getElementById("admin-away-select").value;
+  
+  const [homeNameSlug, homeAbbrev, homeFlag] = homeVal.split('|');
+  const [awayNameSlug, awayAbbrev, awayFlag] = awayVal.split('|');
+
+  const homeTeam = document.querySelector(`#admin-home-select option[value="${homeVal}"]`).text;
+  const awayTeam = document.querySelector(`#admin-away-select option[value="${awayVal}"]`).text;
+
+  const homeScoreRaw = document.getElementById("admin-home-score").value;
+  const awayScoreRaw = document.getElementById("admin-away-score").value;
+  
+  const homeScore = homeScoreRaw !== "" ? parseInt(homeScoreRaw) : null;
+  const awayScore = awayScoreRaw !== "" ? parseInt(awayScoreRaw) : null;
+
+  const status = document.getElementById("admin-status-select").value;
+
+  if (status === "completed" && (homeScore === null || awayScore === null)) {
+    showToast("A partida só pode ser finalizada se houver placar cadastrado.", "warning");
+    return;
+  }
+
+  try {
+    if (isApiActive) {
+      await apiRequest("/api/protected/admin/matches/update", "POST", {
+        matchId: currentEditingAdminMatchId,
+        homeTeam, homeAbbrev, homeFlag,
+        awayTeam, awayAbbrev, awayFlag,
+        homeScore, awayScore,
+        status
+      });
+      await initAppContent();
+    } else {
+      const mIdx = state.matches.findIndex(m => m.id === currentEditingAdminMatchId);
+      if (mIdx !== -1) {
+        state.matches[mIdx].homeTeam = homeTeam;
+        state.matches[mIdx].homeAbbrev = homeAbbrev;
+        state.matches[mIdx].homeFlag = homeFlag;
+        state.matches[mIdx].awayTeam = awayTeam;
+        state.matches[mIdx].awayAbbrev = awayAbbrev;
+        state.matches[mIdx].awayFlag = awayFlag;
+        state.matches[mIdx].homeScore = homeScore;
+        state.matches[mIdx].awayScore = awayScore;
+        state.matches[mIdx].status = status;
+      }
+      
+      if (status === "completed") {
+        const usersDB = loadMockUsersDB();
+        
+        usersDB.forEach(u => {
+          let points = 0;
+          let correct = 0;
+          let predictedCount = 0;
+          
+          state.matches.forEach(match => {
+            if (match.status === "completed") {
+              const pred = state.predictions[match.id];
+              if (pred) {
+                predictedCount++;
+                const gained = getPointsAwarded(pred.homeScore, pred.awayScore, match.homeScore, match.awayScore);
+                points += gained;
+                if (gained > 0) correct++;
+              }
+            }
+          });
+          
+          u.points = points;
+          u.accuracy = predictedCount > 0 ? Math.round((correct / predictedCount) * 100) : 0;
+        });
+
+        saveMockUsersDB(usersDB);
+
+        const me = usersDB.find(u => u.id === state.user.id);
+        if (me) {
+          state.user.points = me.points;
+          state.user.accuracy = me.accuracy;
+        }
+      }
+
+      saveState();
+      await initAppContent();
+    }
+
+    closeAllModals();
+    adminMatchModal.classList.remove("open");
+    showToast("Partida atualizada com sucesso!", "success");
+  } catch (err) {
+    showToast("Erro ao salvar partida: " + err.message, "danger");
   }
 }
 
@@ -1421,10 +1589,43 @@ function initEventListeners() {
 
   // Admin Modal trigger click
   document.getElementById("admin-panel-menu-btn").addEventListener("click", () => {
+    // Reset to Users Tab by default
+    document.getElementById("admin-tab-users").classList.add("active");
+    document.getElementById("admin-tab-matches").classList.remove("active");
+    document.getElementById("admin-users-tab-content").style.display = "block";
+    document.getElementById("admin-matches-tab-content").style.display = "none";
+    
     loadAdminUsers();
     adminModal.classList.add("open");
   });
+  
   document.getElementById("close-admin-modal").addEventListener("click", closeAllModals);
+
+  // Admin Modal Tab Switchers
+  document.getElementById("admin-tab-users").addEventListener("click", () => {
+    document.getElementById("admin-tab-users").classList.add("active");
+    document.getElementById("admin-tab-matches").classList.remove("active");
+    document.getElementById("admin-users-tab-content").style.display = "block";
+    document.getElementById("admin-matches-tab-content").style.display = "none";
+    loadAdminUsers();
+  });
+
+  document.getElementById("admin-tab-matches").addEventListener("click", () => {
+    document.getElementById("admin-tab-matches").classList.add("active");
+    document.getElementById("admin-tab-users").classList.remove("active");
+    document.getElementById("admin-users-tab-content").style.display = "none";
+    document.getElementById("admin-matches-tab-content").style.display = "block";
+    loadAdminMatches();
+  });
+
+  // Admin Match Edit Modal listeners
+  document.getElementById("close-admin-match-modal").addEventListener("click", () => {
+    adminMatchModal.classList.remove("open");
+  });
+  document.getElementById("cancel-admin-match-btn").addEventListener("click", () => {
+    adminMatchModal.classList.remove("open");
+  });
+  document.getElementById("save-admin-match-btn").addEventListener("click", saveAdminMatchDetails);
 
   document.getElementById("toggle-notifications-btn").addEventListener("click", () => {
     state.user.notificationsEnabled = !state.user.notificationsEnabled;

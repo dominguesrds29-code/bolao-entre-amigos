@@ -278,6 +278,83 @@ app.post('/api/protected/admin/users/toggle-status', async (c) => {
   }
 });
 
+// 8. UPDATE MATCH AND RECALCULATE POINTS (Admin only)
+app.post('/api/protected/admin/matches/update', async (c) => {
+  const userId = c.get('userId');
+  const { matchId, homeTeam, homeAbbrev, homeFlag, awayTeam, awayAbbrev, awayFlag, homeScore, awayScore, status } = await c.req.json();
+  const db = c.env?.DB;
+
+  if (!db) {
+    return c.json({ success: true, message: 'Match updated in Mock Mode' });
+  }
+
+  try {
+    // Verify user is admin
+    const caller = await db.prepare('SELECT is_admin FROM users WHERE id = ?').bind(userId).first();
+    if (!caller || caller.is_admin !== 1) {
+      return c.json({ error: 'Acesso negado: Requer privilégios de administrador' }, 403);
+    }
+
+    const homeScoreVal = homeScore !== null && homeScore !== undefined && homeScore !== '' ? parseInt(homeScore) : null;
+    const awayScoreVal = awayScore !== null && awayScore !== undefined && awayScore !== '' ? parseInt(awayScore) : null;
+
+    // Update match info
+    await db.prepare(
+      `UPDATE matches SET 
+        home_team = ?, home_abbrev = ?, home_flag = ?, 
+        away_team = ?, away_abbrev = ?, away_flag = ?, 
+        home_score = ?, away_score = ?, status = ?
+       WHERE id = ?`
+    ).bind(homeTeam, homeAbbrev, homeFlag, awayTeam, awayAbbrev, awayFlag, homeScoreVal, awayScoreVal, status, matchId).run();
+
+    // Recalculate Points, Accuracy, and Rankings for all users
+    const { results: users } = await db.prepare("SELECT id FROM users").all();
+
+    for (const u of users) {
+      const { results: completedPredictions } = await db.prepare(
+        `SELECT p.home_score as pred_home, p.away_score as pred_away, m.home_score as real_home, m.away_score as real_away 
+         FROM predictions p 
+         JOIN matches m ON p.match_id = m.id 
+         WHERE p.user_id = ? AND m.status = 'completed'`
+      ).bind(u.id).all();
+
+      let points = 0;
+      let correct = 0;
+      const total = completedPredictions.length;
+
+      for (const p of completedPredictions) {
+        if (p.pred_home === p.real_home && p.pred_away === p.real_away) {
+          points += 25; // Exact Match
+          correct += 1;
+        } else {
+          const predResult = Math.sign(p.pred_home - p.pred_away);
+          const realResult = Math.sign(p.real_home - p.real_away);
+          if (predResult === realResult) {
+            points += 10; // Winner/Draw correct
+            correct += 1;
+          }
+        }
+      }
+
+      const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+      // Update user points and accuracy
+      await db.prepare("UPDATE users SET points = ?, accuracy = ? WHERE id = ?").bind(points, accuracy, u.id).run();
+    }
+
+    // Recalculate global_rank based on points DESC
+    const { results: sortedUsers } = await db.prepare("SELECT id FROM users ORDER BY points DESC, name ASC").all();
+    for (let i = 0; i < sortedUsers.length; i++) {
+      const rank = i + 1;
+      await db.prepare("UPDATE users SET global_rank = ? WHERE id = ?").bind(rank, sortedUsers[i].id).run();
+    }
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // --- CRON TRIGGER TRANSPARENCY BROADCASTER ---
 async function handleCronTrigger(env) {
   const db = env.DB;
